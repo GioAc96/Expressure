@@ -32,6 +32,8 @@ class RouteBuilder {
 		this.post = post;
 		this.middlewares = new Array();
 
+		this._prefix = '';
+
 	}
 
 	//Add current route to vanilla express router
@@ -90,7 +92,11 @@ class RouteBuilder {
 
 	//Add prefix to route
 	prefix( prefix ) {
-		this._prefix = prefix;
+
+		this._prefix = prefix + this._prefix;
+		
+		return this;
+
 	}
 
 }

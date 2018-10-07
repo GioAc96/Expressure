@@ -33,10 +33,6 @@ class RouterBuilder {
 		//Build routes
 		this.routes.forEach( route => {
 
-			route.prefix( this._prefix );
-			for( const middleware of this.middlewares ) {
-				route.middleware( middleware );
-			}
 			route.buildRoute( router );
 
 		});
@@ -68,6 +64,9 @@ class RouterBuilder {
 			route.middleware(middleware);
 		}
 
+		//Passing this' prefix to route
+		route.prefix( this._prefix)
+
 		//Adding route to this' routes array
 		this.routes.push(route);
 
@@ -91,6 +90,9 @@ class RouterBuilder {
 			route.middleware(middleware);
 		}
 
+		//Passing this' prefix to route
+		route.prefix( this._prefix)
+
 		//Adding route to this' routes array
 		this.routes.push(route);
 
@@ -100,13 +102,43 @@ class RouterBuilder {
 	
 	//Add prefix to all routes
 	prefix( prefix ) {
-		this._prefix = prefix;
+
+		this._prefix = prefix + this._prefix;
+
+		//Passing prefix to all routes
+		for( const routes of this.routes ) {
+		
+			routes.prefix( prefix );
+		
+		}
+
+		//Passing prefix to all groups
+		for( const group of this.groups ) {
+
+			group.prefix( prefix );
+
+		}
+
+
 		return this;
+
 	}
 
 	middleware( middleware ) {
 
+		//Passing middleware to routes
+		for ( const route of this.routes ) {
+			route.middleware( middleware );
+		}
+
+		//Passing middleware to groups
+		for ( const group of this.groups ) {
+			group.middleware( middleware );
+		}
+
+		//Adding middleware to this' middlewares array
 		this.middlewares.push( middleware );
+
 		return this;
 
 	}
@@ -122,6 +154,9 @@ class RouterBuilder {
 		for (const middleware of this.middlewares) {
 			group.middleware(middleware);
 		}
+
+		//Passing prefix to group
+		group.prefix( this._prefix );
 
 		//Adding group to this' groups array
 		this.groups.push(group);
