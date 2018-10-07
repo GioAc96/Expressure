@@ -98,9 +98,18 @@ class RouterBuilder {
 	//Create new route group
 	group( callback ) {
 
+		//Creating group
 		var group = new RouterBuilder( this.config );
 		callback(group);
+
+		//Adding this' middleware to group
+		for (const middleware of this.middlewares) {
+			group.middleware(middleware);
+		}
+
+		//Adding group to this' groups array
 		this.groups.push(group);
+		
 		return group;
 
 	}
