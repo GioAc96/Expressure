@@ -55,6 +55,7 @@ class RouterBuilder {
 	//Creates new route with get method
 	get( path, action ) {
 	
+		//Creating new route
 		var route = new Route({
 			config: this.config,
 			get: true,
@@ -62,7 +63,14 @@ class RouterBuilder {
 			action: action
 		});
 
+		//Passing this' middlewares to route
+		for (const middleware of this.middlewares) {
+			route.middleware(middleware);
+		}
+
+		//Adding route to this' routes array
 		this.routes.push(route);
+
 		return route;
 
 	}
@@ -70,6 +78,7 @@ class RouterBuilder {
 	//Creates new route with post method
 	post( path, action ) {
 
+		//Creating new route
 		var route = new Route({
 			config: this.config,
 			post: true,
@@ -77,7 +86,14 @@ class RouterBuilder {
 			action: action
 		});
 
+		//Passing this' middlewares to route
+		for (const middleware of this.middlewares) {
+			route.middleware(middleware);
+		}
+
+		//Adding route to this' routes array
 		this.routes.push(route);
+
 		return route;
 
 	}
@@ -109,7 +125,7 @@ class RouterBuilder {
 
 		//Adding group to this' groups array
 		this.groups.push(group);
-		
+
 		return group;
 
 	}
