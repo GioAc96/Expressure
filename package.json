@@ -1,0 +1,32 @@
+{
+  "name": "expressure",
+  "version": "0.2.1",
+  "description": "Custom extension to the express package",
+	"main": "index.js",
+	"repository": {
+		"url": "https://github.com/GioAc96/Expressure"
+	},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Giorgio Acquati",
+    "email": "gioac96@gmail.com",
+    "url": "https://gioac96.rocks"
+  },
+  "license": "MIT",
+  "keywords": [
+    "express",
+    "framework",
+    "web",
+    "laravel",
+    "routing",
+    "router"
+  ],
+  "dependencies": {
+    "express": "^4.16.3"
+	},
+	"directories": {
+		"src": "src"
+	}
+}
