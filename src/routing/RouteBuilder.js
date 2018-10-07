@@ -69,7 +69,7 @@ class RouteBuilder {
 
 	//Add middleware to current route
 	middleware( middlewareName ) {
-
+		
 		//Retrieving middleware
 		const middlewaresPath = this.config.appPath + this.config.paths.middlewares;
 		const middleware = require(middlewaresPath + '/' + middlewareName);
