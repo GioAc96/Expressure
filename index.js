@@ -22,7 +22,7 @@ class Expressure {
 		Object.entries( routeFiles ).forEach( ([i, routeFile]) => {
 
 			//Calling route files (RouterBuilders)
-			const routerBuilder = require(`${routesDir}/${routeFiles}`);
+			const routerBuilder = require(routesDir + "/" + routeFiles);
 
 			//Adding routers to app
 			app.use( routerBuilder.buildRouter() );
