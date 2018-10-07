@@ -39,7 +39,7 @@ class RouteBuilder {
 
 		//Retrieve route action callback
 		var controllersPath = this.config.appPath + this.config.paths.controllers;
-		var callback = require(controllersPath + '/' + this.controllerName)[this.controllerMethod];
+		var callback = require(`${controllersPath}/${this.controllerName}`)[this.controllerMethod];
 
 		var fn;
 
@@ -72,7 +72,7 @@ class RouteBuilder {
 
 		//Retrieving middleware
 		const middlewaresPath = this.config.appPath + this.config.paths.middlewares;
-		const middleware = require(middlewaresPath + '/' + middlewareName);
+		const middleware = require(`${middlewaresPath}/${middlewareName}`);
 
 		//Add middleware to middlewares array
 		this.middlewares.push( middleware );
