@@ -29,7 +29,8 @@ class ResponseHelpers {
 		res,
 		errorCode = 0,
 		status = 520,
-		msg = undefined
+		msg = undefined,
+		data
 	) {
 
 		//Setting status code
@@ -45,10 +46,28 @@ class ResponseHelpers {
 		res.send({
 			ok: false,
 			errorCode: errorCode,
-			msg: msg
+			msg: msg,
+			data: data
 		});
 
 		return res.end();
+
+	}
+
+	//Sends validation error
+	validationError(
+		res,
+		errors,
+		errorCode = 'VALIDATION_ERROR'
+	) {
+		
+		return this.err(
+			res,
+			errorCode,
+			400,
+			null,
+			errors
+		)
 
 	}
 
