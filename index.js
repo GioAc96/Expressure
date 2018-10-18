@@ -3,6 +3,7 @@ class Expressure {
 	constructor ( config ) {
 
 		this.config = config;
+		this.validator = require('./src/helpers/Validator');
 
 	}
 
