@@ -15,6 +15,9 @@ class RouterBuilder {
 		//Initializing array of groups of routes
 		this.groups = new Array();
 
+		//Initializing array of validators
+		this.validators = new Array();
+
 		this._prefix = '';
 		this.middlewares = new Array();
 
@@ -51,10 +54,24 @@ class RouterBuilder {
 	//Creates new route with get method
 	get( path, action ) {
 	
+		return this.route('GET', path, action);
+
+	}
+	
+	//Creates new route with post method
+	post( path, action ) {
+
+		return this.route('POST', path, action);
+
+	}
+
+	route( method, path, action ) {
+
 		//Creating new route
 		var route = new Route({
 			config: this.config,
-			get: true,
+			get: method == 'GET',
+			post: method == 'POST',
 			path: path,
 			action: action
 		});
@@ -64,30 +81,9 @@ class RouterBuilder {
 			route.middleware(middleware);
 		}
 
-		//Passing this' prefix to route
-		route.prefix( this._prefix)
-
-		//Adding route to this' routes array
-		this.routes.push(route);
-
-		return route;
-
-	}
-	
-	//Creates new route with post method
-	post( path, action ) {
-
-		//Creating new route
-		var route = new Route({
-			config: this.config,
-			post: true,
-			path: path,
-			action: action
-		});
-
-		//Passing this' middlewares to route
-		for (const middleware of this.middlewares) {
-			route.middleware(middleware);
+		//Passing this' validators to route
+		for( const validator of this.validators ) {
+			route.validate( validator );
 		}
 
 		//Passing this' prefix to route
@@ -150,9 +146,18 @@ class RouterBuilder {
 		var group = new RouterBuilder( this.config );
 		callback(group);
 
-		//Adding this' middleware to group
+		//Adding this' middlewares to group
 		for (const middleware of this.middlewares) {
+			
 			group.middleware(middleware);
+
+		}
+
+		//Adding this' validators to group
+		for ( const validator of this.validators ) {
+
+			group.validate( validator );
+
 		}
 
 		//Passing prefix to group
@@ -162,6 +167,26 @@ class RouterBuilder {
 		this.groups.push(group);
 
 		return group;
+
+	}
+
+	//Add validator to all rotues
+	validate( validator ) {
+
+		//Passing validator to routes
+		for ( const route of this.routes ) {
+			route.validate( validator );
+		}
+
+		//Passing validator to groups
+		for ( const group of this.groups ) {
+			group.validate( validator );
+		}
+
+		//Adding valiadtor to this' validators array
+		this.validators.push( validator );
+
+		return this;
 
 	}
 

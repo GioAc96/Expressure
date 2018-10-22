@@ -14,28 +14,17 @@ const validationSchema = {
 
 class Validator {
 	
-	constructor( req, stopOnError = true ) {
+	constructor({
+		validationSchema,
+		stopOnError = true
+
+	}) {
 		
-		//Saving request object in memory
-		this.req = req;
+		//Saving validationSchema in object
+		this.validationSchema = validationSchema;
 
 		//Initializing validation errors holder
 		this._errors = {};
-		
-		//Writing method to get request parameters
-		if( req.method == 'GET' ) {
-			
-			this._getField = ( fieldName ) => {
-				return this.req.query[ fieldName ];
-			}
-			
-		} else {
-			
-			this._getField = ( fieldName ) => {
-				return this.req.params[ fieldName ] || undefined;
-			}
-			
-		}
 
 		//Setting validation method
 		this.validate = stopOnError ? this._validateStopOnError : this._validateContinueOnError;
@@ -60,19 +49,19 @@ class Validator {
 	
 	//Function used to get validation response according to the validation schema provided
 	//This version of the function stops on the first validation error
-	_validateStopOnError( validationSchema ) {
-
+	_validateStopOnError( req ) {
+		
 		//Cleaning previous validation errors
 		this._errors = {};
 		
 		//Iterating over every field
-		for( const field in validationSchema )
-		if( validationSchema.hasOwnProperty( field ) ) {
+		for( const field in this.validationSchema )
+		if( this.validationSchema.hasOwnProperty( field ) ) {
 			
 			//Field has validation
-			const value = this._getField( field );
+			const value = req.data[ field ];
 			
-			const fieldValidationSchema = validationSchema[ field ]
+			const fieldValidationSchema = this.validationSchema[ field ]
 
 			//Check wether field is present
 			if( this._applyRule('required', value) ){
@@ -122,19 +111,19 @@ class Validator {
 
 	//Function used to get validation response according to the validation schema provided
 	//This version of the function does not stop on validation errors
-	_validateContinueOnError( validationSchema ) {
-
+	_validateContinueOnError( req ) {
+		
 		//Cleaning previous validation errors
 		this._errors = {};
 		
 		//Iterating over every field
-		for( const field in validationSchema )
-		if( validationSchema.hasOwnProperty( field ) ) {
+		for( const field in this.validationSchema )
+		if( this.validationSchema.hasOwnProperty( field ) ) {
 			
 			//Field has validation
-			const value = this._getField( field );
+			const value = req.data[ field ];
 			
-			const fieldValidationSchema = validationSchema[ field ]
+			const fieldValidationSchema = this.validationSchema[ field ]
 
 			//Check wether field is present
 			if( this._applyRule('required', value) ){
@@ -150,7 +139,7 @@ class Validator {
 					if( ! this._applyRule( ruleName, value, fieldValidationSchema[ ruleName ] )) {
 						
 						//Saving errors
-						this._addError( field, ruleName);
+						this._addError( field, ruleName );
 						
 					}
 				
@@ -199,7 +188,7 @@ class Validator {
 			//Field should be numeric
 			numeric: ( value ) => {
 				
-				return ! isNaN ( parseFloat( value ) ) && isFinite(value);
+				return ! isNaN ( parseFloat( value ) ) && isFinite( value );
 	
 			},
 	
@@ -220,7 +209,7 @@ class Validator {
 			//Field value should be between a max and a min
 			between: ( value, params ) => {
 	
-				return value <= params.max && value >= params.min;
+				return value >= params.min && value <= params.max;
 	
 			},
 	
@@ -247,7 +236,7 @@ class Validator {
 	//Function used to check if there are any validation errors
 	hasErrors() {
 		
-		return Object.keys(this._errors).length !== 0;
+		return Object.keys(this._errors).length > 0;
 
 	}
 	

@@ -31,6 +31,7 @@ class RouteBuilder {
 		this.get = get;
 		this.post = post;
 		this.middlewares = new Array();
+		this.validators = new Array();
 
 		this._prefix = '';
 
@@ -56,13 +57,58 @@ class RouteBuilder {
 
 		}
 
-		//Building arguments array
-		var args = this.middlewares;
-		args.push(callback);
-		args.unshift(0);
+		//Building arguments array for fn
 
-		//Applying prefix
-		args[0] = this._prefix + this.path;
+		const args = [
+			
+			//Route URI
+			this._prefix + this.path,
+
+			//Request data aggregation
+			(req, res, next) => {
+				req.data = { 
+					...req.query,
+					...req.params,
+					...req.body
+				}
+
+				next()
+			},
+
+			//Middlewares
+			...this.middlewares
+		];
+
+		//Adding validators
+		const validatorsPath = this.config.appPath + this.config.paths.validators;
+		const responseClass = require('../helpers/response');
+		const response = new responseClass( this.config );
+
+		//Adding validators to request handlers
+		for( const validatorName of this.validators) {
+
+			const validator = require( validatorsPath + '/' + validatorName);
+
+			args.push( (req, res, next) => {
+
+				if( validator.validate( req ) ) {
+					
+					//Validation was successful
+					return next();
+
+				} else {
+
+					//Validation failed. Sending error response
+					return response.validationError(res, validator.getErrors() );
+
+				}
+				
+
+			});
+
+		}
+
+		args.push(callback);
 
 		//Creating route on vanilla router
 		fn.apply(router, args)
@@ -96,6 +142,13 @@ class RouteBuilder {
 		this._prefix = prefix + this._prefix;
 		
 		return this;
+
+	}
+
+	//Add validator to all rotues
+	validate( validator ) {
+
+		this.validators.push( validator )
 
 	}
 
