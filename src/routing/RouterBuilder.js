@@ -19,7 +19,12 @@ class RouterBuilder {
 		this.validators = new Array();
 
 		this._prefix = '';
+
+		//Initializing middlewares array
 		this.middlewares = new Array();
+
+		//Initializing policies array
+		this.policies = new Array();
 
 	}
 	
@@ -115,7 +120,7 @@ class RouterBuilder {
 
 		}
 
-
+		//Returning this for method chaining
 		return this;
 
 	}
@@ -160,6 +165,13 @@ class RouterBuilder {
 
 		}
 
+		//Adding this' policies to group
+		for ( const policy of this.policies ) {
+
+			group.policy( policy.policyName, policy.policyMethod );
+
+		}
+
 		//Passing prefix to group
 		group.prefix( this._prefix );
 
@@ -186,6 +198,28 @@ class RouterBuilder {
 		//Adding valiadtor to this' validators array
 		this.validators.push( validator );
 
+		//Returning this for method chaining
+		return this;
+
+	}
+
+	//Add policy to all routes
+	policy( policyName, policyMethod ) {
+
+		//Passing validator to routes
+		for ( const route of this.routes ) {
+			route.policy( policyName, policyMethod );
+		}
+
+		//Passing validator to groups
+		for ( const group of this.groups ) {
+			group.policy( policyName, policyMethod );
+		}
+
+		//Adding valiadtor to this' validators array
+		this.policies.push( { policyName, policyMethod } );
+
+		//Returning this for method chaining
 		return this;
 
 	}

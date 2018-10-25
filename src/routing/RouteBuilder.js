@@ -32,6 +32,7 @@ class RouteBuilder {
 		this.post = post;
 		this.middlewares = new Array();
 		this.validators = new Array();
+		this.policies = new Array();
 
 		this._prefix = '';
 
@@ -56,13 +57,15 @@ class RouteBuilder {
 			fn = router.post;
 
 		}
+		const path = this._prefix + this.path;
 
 		//Building arguments array for fn
+
 
 		const args = [
 			
 			//Route URI
-			this._prefix + this.path,
+			path.split('::').join(':'),
 
 			//Request data aggregation
 			(req, res, next) => {
@@ -102,7 +105,94 @@ class RouteBuilder {
 					return response.validationError(res, validator.getErrors() );
 
 				}
+
+			});
+
+		}
+
+		const modelsPath = this.config.appPath + this.config.paths.models;
+
+		//Parsing route path for model binding
+		for( const routeParam of path.split('/') ) {
+			
+			//Looking for ::
+			if( routeParam.startsWith('::') ) {
+
 				
+				//:: was found, model should be binded
+
+				//Getting model
+				const modelName = routeParam.substring( 2 );
+				const modelSchema = require(`${modelsPath}/${modelName}`);
+				
+
+				//Adding model binder to request
+				args.push( (req, res, next) => {
+
+					//Getting model
+
+					modelSchema.findById( req.params[ modelName ], (err, model) => {
+						
+						//Checking wether model was found
+						if( err ) {
+
+							//Model was not found
+							//Responding with error
+							return response.err(
+								res,
+								"MODEL_NOT_FOUND",
+								404,
+								null,
+								modelName
+							);	
+	
+						} else {
+
+							//Model was found
+	
+							//Checking wether model bindings container was initialized
+							if( req.models === undefined ) req.models = {};
+	
+							req.models[ modelName ] = model ;
+							return next();
+
+						}
+
+					});
+
+				});
+
+			}
+
+		}
+
+
+
+		//Policy enforcement
+
+		const policyEnforcer = require('../helpers/PolicyEnforcer');
+
+		//Adding policies to request handlers
+		for( const policy of this.policies ) {
+
+			args.push( (req, res, next) => {
+
+				//Enforcing policy
+				if( policyEnforcer( policy.policyName, policy.policyMethod, req ) ) {
+
+					//Policy check passed. Passing to next handler
+					return next();
+
+				} else {
+
+					//Policy check was not passed
+					return response.policyError(
+						res,
+						policy.policyName,
+						policy.policyMethod
+					);	
+
+				}
 
 			});
 
@@ -124,6 +214,8 @@ class RouteBuilder {
 
 		//Add middleware to middlewares array
 		this.middlewares.push( middleware );
+		
+		//Returning this for method chaining
 		return this;
 
 	}
@@ -132,6 +224,8 @@ class RouteBuilder {
 	name( name ) {
 
 		this.name = name;
+
+		//Returning this for method chaining
 		return this;
 
 	}
@@ -141,14 +235,33 @@ class RouteBuilder {
 
 		this._prefix = prefix + this._prefix;
 		
+		//Returning this for method chaining
 		return this;
 
 	}
 
-	//Add validator to all rotues
+	//Add validator to route
 	validate( validator ) {
 
 		this.validators.push( validator )
+
+		//Returning this for method chaining
+		return this;
+
+	}
+
+	//Add policy to route
+	policy( policyName, policyMethod ) {
+
+		this.policies.push({
+		
+			policyName: policyName,
+			policyMethod: policyMethod
+		
+		});
+
+		//Returning this for method chaining
+		return this;
 
 	}
 

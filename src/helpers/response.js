@@ -71,6 +71,27 @@ class ResponseHelpers {
 
 	}
 
+	//Sends unauthorized error on policy enforcement failure
+	policyError(
+		res,
+		policyName,
+		policyMethod,
+		errorCode = 'POLICY_ERROR'
+	) {
+
+		return this.err(
+			res,
+			errorCode,
+			403,
+			null,
+			{
+				policyName: policyName,
+				policyMethod: policyMethod
+			}
+		);
+		
+	}
+
 }
 
 module.exports = ResponseHelpers;
