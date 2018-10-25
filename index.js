@@ -46,6 +46,8 @@ class Expressure {
 
 module.exports = ( expressureConfig ) => {
 
-	return new Expressure( expressureConfig );
+	global.expressure = new Expressure( expressureConfig );
+
+	return global.expressure;
 
 }
