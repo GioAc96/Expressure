@@ -11,7 +11,9 @@ module.exports = {
 		controllers: "/app/http/controllers",
 		routes: "/app/routes",
 		middlewares: "/app/http/middlewares",
-		errors: '/app/config/errors'
+		errors: '/app/config/errors',
+		validators: '/app/http/validators',
+		policies: '/app/policies'
 
 	},
 
