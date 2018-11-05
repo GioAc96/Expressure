@@ -1,13 +1,19 @@
 const Route = require('./RouteBuilder');
 
-//Class used to build a vanilla express router
+/**
+ * Class used to build express routers
+ */
 class RouterBuilder {
 
-	//Constructor
-	constructor( config ) {
+	/**
+	 * Instantiates a new RouteBuilder
+	 */
+	constructor() {
 		
-		//Importing expressure config
-		this.config = config;
+		//Checking wether Expressure config was set
+		if( global.expressureConfig == undefined ) {
+			throw new Error("Expressure must be initialized before instantiating a new RouteBuilder");
+		}
 
 		//Initializing array of routes
 		this.routes = new Array();
@@ -18,6 +24,7 @@ class RouterBuilder {
 		//Initializing array of validators
 		this.validators = new Array();
 
+		//Initializing prefix
 		this._prefix = '';
 
 		//Initializing middlewares array
@@ -26,29 +33,44 @@ class RouterBuilder {
 		//Initializing policies array
 		this.policies = new Array();
 
+		//Initializing group name
+		this._name = '';
+
+
 	}
 	
-	//Returns an instance of express vanilla router
-	buildRouter( router = null ) {
-		
+	/**
+	 * Builds all routes
+	 * @param {Express Router} router Express Router to which the routes should be built on. If null, a new Express Router is instantiated
+	 * @param {String[]} parentRouterName Array of names of the parent routers
+	 */
+	buildRouter( router = null, parentRouterNames = [] ) {
+	
 		//Initialize router
 		if( router == null ){
 		
 			router = require('express').Router();
 
 		}
+		
+		//Adding this' name to the router names array
+		if( this._name !== '' ) {
+			parentRouterNames.push( this._name );
+		}
 
 		//Build routes
+			
 		this.routes.forEach( route => {
 
-			route.buildRoute( router );
+			route.buildRoute( router, parentRouterNames );
 
 		});
+		
 
 		//Recursively building route groups
 		for( const group of this.groups ) {
 
-			group.buildRouter( router );
+			group.buildRouter( router, parentRouterNames );
 			
 		}
 
@@ -56,28 +78,40 @@ class RouterBuilder {
 
 	}
 
-	//Creates new route with get method
-	get( path, action ) {
+	/**
+	 * Instantiates a new route that accepts requests with the GET method
+	 * @param {String} uri Uri of the route
+	 * @param {String, Callable} action Controller method used to handle the request
+	 */
+	get( uri, action ) {
 	
-		return this.route('GET', path, action);
+		return this.route('GET', uri, action);
 
 	}
 	
-	//Creates new route with post method
-	post( path, action ) {
+	/**
+	 * Instantiates a new route that accepts requests with the POST method
+	 * @param {String} uri Uri of the route
+	 * @param {String, Callable} action Controller method used to handle the request
+	 */
+	post( uri, action ) {
 
-		return this.route('POST', path, action);
+		return this.route('POST', uri, action);
 
 	}
 
-	route( method, path, action ) {
+	/**
+	 * Instantiates a new route
+	 * @param {Array} methods Array of methods accepted by the route
+	 * @param {String} uri Uri of the route
+	 * @param {String, Callable} action Controller method used to handle the request
+	 */
+	route( method, uri, action ) {
 
 		//Creating new route
-		var route = new Route({
-			config: this.config,
-			get: method == 'GET',
-			post: method == 'POST',
-			path: path,
+		const route = new Route({
+			method: method,
+			uri: uri,
 			action: action
 		});
 
@@ -101,7 +135,10 @@ class RouterBuilder {
 
 	}
 	
-	//Add prefix to all routes
+	/**
+	 * Adds a prefix to the URI of all routes in the RouterBuilder
+	 * @param {String} prefix prefix to add
+	 */
 	prefix( prefix ) {
 
 		this._prefix = prefix + this._prefix;
@@ -119,12 +156,15 @@ class RouterBuilder {
 			group.prefix( prefix );
 
 		}
-
 		//Returning this for method chaining
 		return this;
 
 	}
 
+	/**
+	 * Adds a middelware to all routes
+	 * @param {String, Callable} middleware Name of the middleware or middleware callable
+	 */
 	middleware( middleware ) {
 
 		//Passing middleware to routes
@@ -144,11 +184,14 @@ class RouterBuilder {
 
 	}
 
-	//Create new route group
+	/**
+	 * Creates a new subgroup of routes
+	 * @param {Callback} callback Helper callback that builds routes on the group
+	 */
 	group( callback ) {
 
 		//Creating group
-		var group = new RouterBuilder( this.config );
+		var group = new RouterBuilder();
 		callback(group);
 
 		//Adding this' middlewares to group
@@ -182,7 +225,10 @@ class RouterBuilder {
 
 	}
 
-	//Add validator to all rotues
+	/**
+	 * Adds a validator to all routes
+	 * @param {Validator} validator Validator to add
+	 */
 	validate( validator ) {
 
 		//Passing validator to routes
@@ -203,7 +249,11 @@ class RouterBuilder {
 
 	}
 
-	//Add policy to all routes
+	/**
+	 * Adds a policty to all routes
+	 * @param {String} policyName Name of the policy
+	 * @param {String} policyMethod Name of the method of the policy
+	 */
 	policy( policyName, policyMethod ) {
 
 		//Passing validator to routes
@@ -224,8 +274,14 @@ class RouterBuilder {
 
 	}
 
+	/**
+	 * Sets the name of the current router
+	 * @param {String} name Name of the router/route group
+	 */
+	name( name ) {
+		this._name = name;
+	}
+
 }
 
-module.exports = ( config ) => {
-	return new RouterBuilder( config );
-}
+module.exports = RouterBuilder;

@@ -15,6 +15,7 @@ const validationSchema = {
 class Validator {
 	
 	constructor({
+		
 		validationSchema,
 		stopOnError = true
 
@@ -34,7 +35,11 @@ class Validator {
 
 	}
 
-	//Function used to add error to the validation report
+	/**
+	 * Adds error to the validation report
+	 * @param {String} fieldName Name of the field that failed validation
+	 * @param {String} ruleName Name of the rule that generated the validation error
+	 */
 	_addError( fieldName, ruleName ) {
 		
 		if( typeof this._errors[ fieldName ] === 'undefined' ) {
@@ -47,8 +52,10 @@ class Validator {
 
 	}
 	
-	//Function used to get validation response according to the validation schema provided
-	//This version of the function stops on the first validation error
+	/**
+	 * Validates the current request and stops at the first validation error
+	 * @param {Express request} req Current request Object
+	 */
 	_validateStopOnError( req ) {
 		
 		//Cleaning previous validation errors
@@ -109,8 +116,10 @@ class Validator {
 		
 	}
 
-	//Function used to get validation response according to the validation schema provided
-	//This version of the function does not stop on validation errors
+	/**
+	 * Validates the current request without stopping at the first validation error
+	 * @param {Express request} req Current request Object
+	 */
 	_validateContinueOnError( req ) {
 		
 		//Cleaning previous validation errors
@@ -166,7 +175,12 @@ class Validator {
 		
 	}
 	
-	//Checking wether val
+	/**
+	 * Applies a validation rule, and returns a boolean representing wether the field passed the rule checking
+	 * @param {String} ruleName Name of the validation rule to apply
+	 * @param {any} value Value of the field to validate
+	 * @param {Object} params Validation rule parameters
+	 */
 	_applyRule( ruleName, value, params ) {
 		
 		const result = this.rules[ ruleName ]( value, params );
@@ -174,6 +188,9 @@ class Validator {
 		
 	}
 	
+	/**
+	 * Loads basic validation rules
+	 */
 	loadDefaultRules() {
 		
 		this.rules = {
@@ -218,7 +235,11 @@ class Validator {
 		
 	}
 
-	//Function used to define custom validation rules
+	/**
+	 * Extends the validator with custom validation rules
+	 * @param {String} ruleName Name of the rule to add
+	 * @param {Callback} callback Rule body
+	 */
 	extend( ruleName, callback ) {
 		
 		this.rules[ ruleName ] = callback;
@@ -226,14 +247,18 @@ class Validator {
 
 	}
 
-	//Function used to get list of validation errors
+	/**
+	 * Returns the validation errors that occured with the current request
+	 */
 	getErrors() {
 		
 		return this._errors;
 
 	}
 
-	//Function used to check if there are any validation errors
+	/**
+	 * Returns a boolean representing wether the current request has generated validation errors
+	 */
 	hasErrors() {
 		
 		return Object.keys(this._errors).length > 0;

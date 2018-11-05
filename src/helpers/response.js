@@ -1,12 +1,10 @@
-class ResponseHelpers {
+module.exports = {
 
-	constructor( config ) {
-		
-		this.config = config
-		this.errors = require(config.appPath + config.paths.errors);
-
-	}
-	//Send ok response
+	/**
+	 * Sends an ok response
+	 * @param {Express response} res Express response object
+	 * @param {Object} data Data to send
+	 */
 	ok(res, data = undefined) {
 
 		if( data == undefined ) {
@@ -22,9 +20,16 @@ class ResponseHelpers {
 
 		return res.end();
 
-	}
+	},
 
-	//Send error response
+	/**
+	 * Sends an error response
+	 * @param {Express response} res Express response object
+	 * @param {Int, String} errorCode Error code
+	 * @param {Int} status HTTP Status code
+	 * @param {String} msg Error message
+	 * @param {Object} data Data to send along the response
+	 */
 	err(
 		res,
 		errorCode = 0,
@@ -36,9 +41,10 @@ class ResponseHelpers {
 		//Setting status code
 		res.status(status);
 
+		//Looking for error code in errors
 		if( typeof errorCode === 'string' || errorCode instanceof String ) {
 			
-			errorCode = this.errors[errorCode];
+			errorCode = global.expressureConfig.errors[ errorCode ] || 0;
 			
 		}
 
@@ -52,16 +58,21 @@ class ResponseHelpers {
 
 		return res.end();
 
-	}
+	},
 
-	//Sends validation error
+	/**
+	 * Sends a validation error response
+	 * @param {Express response} res Express response object
+	 * @param {Object} errors Validation errors data
+	 * @param {Int} errorCode Error code
+	 */
 	validationError(
 		res,
 		errors,
 		errorCode = 'VALIDATION_ERROR'
 	) {
 		
-		return this.err(
+		return global.expressure.helpers.response.err(
 			res,
 			errorCode,
 			400,
@@ -69,9 +80,15 @@ class ResponseHelpers {
 			errors
 		)
 
-	}
+	},
 
-	//Sends unauthorized error on policy enforcement failure
+	/**
+	 * Sends a policy enforcement failed error
+	 * @param {Express response} res Express response object
+	 * @param {String} policyName Name of the policy
+	 * @param {String} policyMethod Name of the policy method
+	 * @param {String} errorCode Error code
+	 */
 	policyError(
 		res,
 		policyName,
@@ -79,7 +96,7 @@ class ResponseHelpers {
 		errorCode = 'POLICY_ERROR'
 	) {
 
-		return this.err(
+		return global.expressure.helpers.response.err(
 			res,
 			errorCode,
 			403,
@@ -92,6 +109,5 @@ class ResponseHelpers {
 		
 	}
 
-}
 
-module.exports = ResponseHelpers;
+}

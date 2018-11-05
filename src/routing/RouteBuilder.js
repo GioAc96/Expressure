@@ -1,35 +1,33 @@
-//Class used to build single routes
+/**
+ * Class used to create Rotues
+ */
 class RouteBuilder {
 
-	//Constructor
 	constructor({
+		
+		//Methods allowed
+		method,
 
-		//Expressure configuration
-		config,
-
-		//The path (uri) of the route
-		path,
+		//The uri of the route
+		uri,
 
 		//Action associated to the route
 		action,
 
-		//Methods allowed
-		get = false,
-		post = false,
-		
-		
 	} = {}) {
 		
-		this.config = config;
+		//Checking wether Expressure config was set
+		if( global.expressureConfig == undefined ) {
+			throw new Error("Expressure must be initialized before instantiating a new RouteBuilder");
+		}
 	
-		this.path = path;
+		this.uri = uri;
+		this.method = method;
 		
 		action = action.split('@');
 		this.controllerName = action[0];
 		this.controllerMethod = action[1];
 
-		this.get = get;
-		this.post = post;
 		this.middlewares = new Array();
 		this.validators = new Array();
 		this.policies = new Array();
@@ -37,38 +35,170 @@ class RouteBuilder {
 		this._prefix = '';
 
 	}
+	
+	/**
+	 * Adds a middleware to the rotue
+	 * @param {String} middlewareName Name of the middleware to add to the route
+	 */
+	middleware( middlewareName ) {
 
-	//Add current route to vanilla express router
-	buildRoute( router ) {
+		//Add middleware to middlewares array
+		this.middlewares.push(
+			global.expressure.helpers.file( 'middlewares', middlewareName )
+		);
+		
+		//Returning this for method chaining
+		return this;
 
-		//Retrieve route action callback
-		var controllersPath = this.config.appPath + this.config.paths.controllers;
-		var callback = require(controllersPath + '/' + this.controllerName)[this.controllerMethod];
+	}
 
-		var fn;
+	/**
+	 * Assignsa name to the route
+	 * @param {String} name Name of the route
+	 */
+	name( name ) {
 
-		//Retrieve method
-		if( this.get ){
-			
-			fn = router.get;
+		this._name = name;
 
-		} else if( this.post ){
+		//Returning this for method chaining
+		return this;
 
-			fn = router.post;
+	}
 
-		}
-		const path = this._prefix + this.path;
+	/**
+	 * Adds a prefix to the route URI
+	 * @param {String} prefix Prefix to add to the route URI
+	 */
+	prefix( prefix ) {
 
-		//Building arguments array for fn
+		this._prefix = prefix + this._prefix;
+		
+		//Returning this for method chaining
+		return this;
 
+	}
+	
+	/**
+	 * Adds a validator to the route
+	 * @param {String} validator Name of the validator to add to the route
+	 */
+	validate( validator ) {
 
-		const args = [
+		this.validators.push( validator )
+
+		//Returning this for method chaining
+		return this;
+
+	}
+
+	/**
+	 * Adds a policty to the current
+	 * @param {String} policyName Name of the policy
+	 * @param {String} policyMethod Name of the method of the policty
+	 */
+	policy( policyName, policyMethod ) {
+
+		this.policies.push({
+		
+			policyName: policyName,
+			policyMethod: policyMethod
+		
+		});
+
+		//Returning this for method chaining
+		return this;
+
+	}
+
+	/**
+	 * Builds a route on the specified Express Router
+	 * @param {Express Router} router Router to which build the route on
+	 * @param {String[]} parentRouterNames Array of names of routers
+	 */
+	buildRoute( router, parentRouterNames = [] ) {
+
+		this.parentRouterNames = parentRouterNames;
+
+		//Logging route name
+		this.buildingLog()
+
+		//Retrieving Express router method
+		const expressRouteBuilder = router[ this.method.toLowerCase() ];
+
+		//Calculating full uri
+		this.fullUri = this._prefix + this.uri;
+		
+		//Building arguments array for expressRouteBuilder
+		const expressRouteBuilderArgs = [
 			
 			//Route URI
-			path.split('::').join(':'),
+			this.fullUri.split('::').join(':'),
+			
+			...this.buildRequestPipeline()
 
-			//Request data aggregation
-			(req, res, next) => {
+		];
+		
+		//Creating route on vanilla router
+		expressRouteBuilder.apply(router, expressRouteBuilderArgs)
+
+	}
+
+	/**
+	 * Logs to console the building of the route
+	 */
+	buildingLog() {
+
+		//Checking wether the route is named
+		if( this._name === undefined ) {
+
+			//Route is unnamed. Using URI
+		
+			console.log(
+				'\x1b[35m%s\x1b[0m: \x1b[33m%s\x1b[0m',
+				( this.method.length < 4 ? ( ' '.repeat( 4 - this.method.length ) + this.method) : this.method),
+				this.uri
+			);
+			
+		} else {
+			
+			//The route is named
+			
+			this.fullName = this.parentRouterNames.join('.') + '.' + this._name;
+			
+			console.log(
+				'\x1b[35m%s\x1b[0m: \x1b[34m%s\x1b[0m',
+				( this.method.length < 4 ? ( ' '.repeat( 4 - this.method.length ) + this.method) : this.method),
+				this.fullName
+			);
+
+		}
+
+	}
+
+	/**
+	 * Builds the request pipeline
+	 */
+	buildRequestPipeline() {
+
+		return [
+			
+			this.getDataAggregatorFunction(),
+			...this.middlewares,
+			...this.buildValidators(),
+			...this.buildModelBinders(),
+			...this.buildPolicyEnforcers(),
+			this.getRequestHandler()
+
+		]
+
+	}
+
+	/**
+	 * Returns a request middleware that aggregates request data in req.data
+	 */
+	getDataAggregatorFunction() {
+
+			return (req, res, next) => {
 				req.data = { 
 					...req.query,
 					...req.params,
@@ -76,23 +206,22 @@ class RouteBuilder {
 				}
 
 				next()
-			},
+			}
 
-			//Middlewares
-			...this.middlewares
-		];
+	}
 
-		//Adding validators
-		const validatorsPath = this.config.appPath + this.config.paths.validators;
-		const responseClass = require('../helpers/response');
-		const response = new responseClass( this.config );
+	/**
+	 * Builds validators of request to Express request handlers
+	 */
+	buildValidators(){
 
-		//Adding validators to request handlers
+		const pipeline = new Array();
+
 		for( const validatorName of this.validators) {
 
-			const validator = require( validatorsPath + '/' + validatorName);
+			const validator = global.expressure.helpers.file('validators', validatorName);
 
-			args.push( (req, res, next) => {
+			pipeline.push( (req, res, next) => {
 
 				if( validator.validate( req ) ) {
 					
@@ -102,7 +231,7 @@ class RouteBuilder {
 				} else {
 
 					//Validation failed. Sending error response
-					return response.validationError(res, validator.getErrors() );
+					return global.express.helpers.response.validationError( res, validator.getErrors() );
 
 				}
 
@@ -110,55 +239,58 @@ class RouteBuilder {
 
 		}
 
-		const modelsPath = this.config.appPath + this.config.paths.models;
+		return pipeline;
 
-		//Parsing route path for model binding
-		for( const routeParam of path.split('/') ) {
+	}
+
+	/**
+	 * Builds model binders of request to Express request handlers
+	 */
+	buildModelBinders() {
+
+		const pipeline = new Array();
+
+		for( const routeParam of this.fullUri.split('/') ) {
 			
 			//Looking for ::
 			if( routeParam.startsWith('::') ) {
 
-				
 				//:: was found, model should be binded
 
 				//Getting model
 				const modelName = routeParam.substring( 2 );
-				const modelSchema = require(`${modelsPath}/${modelName}`);
-				
+				const modelSchema = global.expressure.helpers.file('models', modelName);
 
 				//Adding model binder to request
-				args.push( (req, res, next) => {
+				pipeline.push( async (req, res, next) => {
 
-					//Getting model
+					//Retrieving model
+					const model = await modelSchema.findById( req.params[ modelName ] ).exec();
 
-					modelSchema.findById( req.params[ modelName ], (err, model) => {
-						
-						//Checking wether model was found
-						if( err ) {
+					//Checking wether model was found
+					if( model === null ) {
 
-							//Model was not found
-							//Responding with error
-							return response.err(
-								res,
-								"MODEL_NOT_FOUND",
-								404,
-								null,
-								modelName
-							);	
-	
-						} else {
+						//Model was not found. Responding with error
+						return global.expressure.helpers.response.err(
+							res,
+							"MODEL_NOT_FOUND",
+							404,
+							null,
+							{
+								modelName: modelName
+							}
+						);	
 
-							//Model was found
-	
-							//Checking wether model bindings container was initialized
-							if( req.models === undefined ) req.models = {};
-	
-							req.models[ modelName ] = model ;
-							return next();
+					} else {
 
-						}
+						//Model was found. Checking wether model bindings container was initialized
+						if( req.models === undefined ) req.models = {};
 
-					});
+						//Binding model
+						req.models[ modelName ] = model ;
+						return next();
+
+					}
 
 				});
 
@@ -166,16 +298,22 @@ class RouteBuilder {
 
 		}
 
+		return pipeline;
+	}
 
+	/**
+	 * Builds policy enforcers of request to Express request handlers
+	 */
+	buildPolicyEnforcers() {
 
-		//Policy enforcement
+		const pipeline = new Array();
 
 		const policyEnforcer = require('../helpers/PolicyEnforcer');
 
 		//Adding policies to request handlers
 		for( const policy of this.policies ) {
 
-			args.push( (req, res, next) => {
+			pipeline.push( (req, res, next) => {
 
 				//Enforcing policy
 				if( policyEnforcer( policy.policyName, policy.policyMethod, req ) ) {
@@ -198,71 +336,14 @@ class RouteBuilder {
 
 		}
 
-		args.push(callback);
-
-		//Creating route on vanilla router
-		fn.apply(router, args)
-
+		return pipeline;
 	}
 
-	//Add middleware to current route
-	middleware( middlewareName ) {
-		
-		//Retrieving middleware
-		const middlewaresPath = this.config.appPath + this.config.paths.middlewares;
-		const middleware = require(middlewaresPath + '/' + middlewareName);
-
-		//Add middleware to middlewares array
-		this.middlewares.push( middleware );
-		
-		//Returning this for method chaining
-		return this;
-
-	}
-
-	//Specify route name
-	name( name ) {
-
-		this.name = name;
-
-		//Returning this for method chaining
-		return this;
-
-	}
-
-	//Add prefix to route
-	prefix( prefix ) {
-
-		this._prefix = prefix + this._prefix;
-		
-		//Returning this for method chaining
-		return this;
-
-	}
-
-	//Add validator to route
-	validate( validator ) {
-
-		this.validators.push( validator )
-
-		//Returning this for method chaining
-		return this;
-
-	}
-
-	//Add policy to route
-	policy( policyName, policyMethod ) {
-
-		this.policies.push({
-		
-			policyName: policyName,
-			policyMethod: policyMethod
-		
-		});
-
-		//Returning this for method chaining
-		return this;
-
+	/**
+	 * Returns the request handler
+	 */
+	getRequestHandler() {
+		return global.expressure.helpers.file('controllers', this.controllerName)[ this.controllerMethod ];
 	}
 
 }
