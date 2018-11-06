@@ -45,7 +45,10 @@ class RouterBuilder {
 	 * @param {String[]} parentRouterName Array of names of the parent routers
 	 */
 	buildRouter( router = null, parentRouterNames = [] ) {
-	
+
+		//Forcing pass by value of array
+		const parentRouterNamesCopy = parentRouterNames.slice(0);
+
 		//Initialize router
 		if( router == null ){
 		
@@ -54,15 +57,15 @@ class RouterBuilder {
 		}
 		
 		//Adding this' name to the router names array
-		if( this._name !== '' ) {
-			parentRouterNames.push( this._name );
+		if( this._name != '' ) {
+			parentRouterNamesCopy.push( this._name );
 		}
 
 		//Build routes
 			
 		this.routes.forEach( route => {
 
-			route.buildRoute( router, parentRouterNames );
+			route.buildRoute( router, parentRouterNamesCopy );
 
 		});
 		
@@ -70,7 +73,7 @@ class RouterBuilder {
 		//Recursively building route groups
 		for( const group of this.groups ) {
 
-			group.buildRouter( router, parentRouterNames );
+			group.buildRouter( router, parentRouterNamesCopy );
 			
 		}
 
@@ -191,8 +194,8 @@ class RouterBuilder {
 	group( callback ) {
 
 		//Creating group
-		var group = new RouterBuilder();
-		callback(group);
+		const group = new RouterBuilder();
+		callback( group );
 
 		//Adding this' middlewares to group
 		for (const middleware of this.middlewares) {
