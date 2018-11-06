@@ -62,7 +62,6 @@ class RouterBuilder {
 		}
 
 		//Build routes
-			
 		this.routes.forEach( route => {
 
 			route.buildRoute( router, parentRouterNamesCopy );

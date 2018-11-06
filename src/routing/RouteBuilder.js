@@ -231,7 +231,7 @@ class RouteBuilder {
 				} else {
 
 					//Validation failed. Sending error response
-					return global.express.helpers.response.validationError( res, validator.getErrors() );
+					return global.expressure.helpers.response.validationError( res, validator.getErrors() );
 
 				}
 
