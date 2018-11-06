@@ -1,6 +1,6 @@
 {
   "name": "expressure",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Custom extension to the express package",
 	"main": "index.js",
 	"repository": {
