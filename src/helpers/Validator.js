@@ -229,6 +229,13 @@ class Validator {
 				return value >= params.min && value <= params.max;
 	
 			},
+
+			//Field length should be between a max and a min
+			lBetween: ( value, params ) => {
+
+				return value.length >= params.min && value.length <= params.max
+
+			}
 	
 	
 		}
