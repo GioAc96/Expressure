@@ -29,7 +29,7 @@ module.exports = ( expressureConfig ) => {
 		 * Builds all routers
 		 * @param { Express app } app the Express app to build routes on
 		 */
-		buildRouters ( app ) {
+		buildRouters( app ) {
 
 			//Get router builders directories
 			const routesDir = global.expressureConfig.appPath + global.expressureConfig.paths.routes;
@@ -69,7 +69,12 @@ module.exports = ( expressureConfig ) => {
 		/**
 		 * Validator
 		 */
-		validator: require('./src/helpers/Validator')
+		validator: require('./src/helpers/Validator'),
+
+		/**
+		 * File helper shortcut
+		 */
+		require: requireFile,
 
 	}
 

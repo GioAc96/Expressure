@@ -14,10 +14,10 @@ class RouteBuilder {
 		//Action associated to the route
 		action,
 
-	} = {}) {
+	} = {}){
 		
 		//Checking wether Expressure config was set
-		if( global.expressureConfig == undefined ) {
+		if( global.expressureConfig === undefined ){
 			throw new Error("Expressure must be initialized before instantiating a new RouteBuilder");
 		}
 	
@@ -31,6 +31,7 @@ class RouteBuilder {
 		this.middlewares = new Array();
 		this.validators = new Array();
 		this.policies = new Array();
+		this.binders = new Array();
 
 		this._prefix = '';
 
@@ -40,11 +41,11 @@ class RouteBuilder {
 	 * Adds a middleware to the rotue
 	 * @param {String} middlewareName Name of the middleware to add to the route
 	 */
-	middleware( middlewareName ) {
+	middleware( middlewareName ){
 
 		//Add middleware to middlewares array
 		this.middlewares.push(
-			global.expressure.helpers.file( 'middlewares', middlewareName )
+			global.expressure.require( 'middlewares', middlewareName )
 		);
 		
 		//Returning this for method chaining
@@ -56,7 +57,7 @@ class RouteBuilder {
 	 * Assignsa name to the route
 	 * @param {String} name Name of the route
 	 */
-	name( name ) {
+	name( name ){
 
 		this._name = name;
 
@@ -69,7 +70,7 @@ class RouteBuilder {
 	 * Adds a prefix to the route URI
 	 * @param {String} prefix Prefix to add to the route URI
 	 */
-	prefix( prefix ) {
+	prefix( prefix ){
 
 		this._prefix = prefix + this._prefix;
 		
@@ -82,7 +83,7 @@ class RouteBuilder {
 	 * Adds a validator to the route
 	 * @param {String} validator Name of the validator to add to the route
 	 */
-	validate( validator ) {
+	validate( validator ){
 
 		this.validators.push( validator )
 
@@ -92,11 +93,11 @@ class RouteBuilder {
 	}
 
 	/**
-	 * Adds a policty to the current
+	 * Enforces a policy for the route
 	 * @param {String} policyName Name of the policy
 	 * @param {String} policyMethod Name of the method of the policty
 	 */
-	policy( policyName, policyMethod ) {
+	policy( policyName, policyMethod ){
 
 		this.policies.push({
 		
@@ -111,11 +112,32 @@ class RouteBuilder {
 	}
 
 	/**
+	 * Manually adds a model binder
+	 * @param {String} fieldName Name of the field containing the id of the model to bind
+	 * @param {String} modelName Name of the model schema to bind
+	 */
+	bind( fieldName, modelName ){
+
+		//Allowing implicit modelName
+		if( modelName === undefined ){
+			modelName = fieldName;
+		}
+
+		this.binders.push({
+			fieldName,
+			modelName
+		});
+
+		return this;
+
+	}
+
+	/**
 	 * Builds a route on the specified Express Router
 	 * @param {Express Router} router Router to which build the route on
 	 * @param {String[]} parentRouterNames Array of names of routers
 	 */
-	buildRoute( router, parentRouterNames = [] ) {
+	buildRoute( router, parentRouterNames = [] ){
 
 		this.parentRouterNames = parentRouterNames;
 
@@ -146,10 +168,10 @@ class RouteBuilder {
 	/**
 	 * Logs to console the building of the route
 	 */
-	buildingLog() {
+	buildingLog(){
 
 		//Checking wether the route is named
-		if( this._name === undefined ) {
+		if( this._name === undefined ){
 
 			//Route is unnamed. Using URI
 		
@@ -178,11 +200,11 @@ class RouteBuilder {
 	/**
 	 * Builds the request pipeline
 	 */
-	buildRequestPipeline() {
+	buildRequestPipeline(){
 
 		return [
 			
-			this.getDataAggregatorFunction(),
+			this.getBootstrapFunction(),
 			...this.middlewares,
 			...this.buildValidators(),
 			...this.buildModelBinders(),
@@ -196,9 +218,17 @@ class RouteBuilder {
 	/**
 	 * Returns a request middleware that aggregates request data in req.data
 	 */
-	getDataAggregatorFunction() {
+	getBootstrapFunction(){
 
 			return (req, res, next) => {
+
+				//Initialize service container
+				req.providers = {};
+
+				//Initialize model bindings contianer
+				req.models = {};
+
+				//Data aggregation
 				req.data = { 
 					...req.query,
 					...req.params,
@@ -217,13 +247,13 @@ class RouteBuilder {
 
 		const pipeline = new Array();
 
-		for( const validatorName of this.validators) {
+		for( const validatorName of this.validators){
 
-			const validator = global.expressure.helpers.file('validators', validatorName);
+			const validator = global.expressure.require('validators', validatorName);
 
 			pipeline.push( (req, res, next) => {
 
-				if( validator.validate( req ) ) {
+				if( validator.validate( req ) ){
 					
 					//Validation was successful
 					return next();
@@ -246,55 +276,72 @@ class RouteBuilder {
 	/**
 	 * Builds model binders of request to Express request handlers
 	 */
-	buildModelBinders() {
+	buildModelBinders(){
 
 		const pipeline = new Array();
 
-		for( const routeParam of this.fullUri.split('/') ) {
-			
-			//Looking for ::
-			if( routeParam.startsWith('::') ) {
+		this.resolveImplicitModelBinders();
 
-				//:: was found, model should be binded
+		for( const binder of this.binders ){
 
-				//Getting model
-				const modelName = routeParam.substring( 2 );
-				const modelSchema = global.expressure.helpers.file('models', modelName);
+			pipeline.push( async( req, res, next ) => {
 
-				//Adding model binder to request
-				pipeline.push( async (req, res, next) => {
+				//Checking wether model id is present in request
+				if( req.data[ binder.fieldName ] === undefined || req.data[ binder.fieldName ] === null) {
+					
+					return global.expressure.helpers.response.err(
+						res,
+						'MODEL_ID_MISSING',
+						400,
+						undefined,
+						{
+							modelName: binder.modelName
+						}
+					);
+				
+				}
 
+				const modelNotFound = ( res ) => {
+				
+					return global.expressure.helpers.response.err(
+						res,
+						'MODEL_NOT_FOUND',
+						404,
+						undefined,
+						{
+							modelName: binder.modelName
+						}
+					);	
+				
+				}
+
+				try {
+					
 					//Retrieving model
-					const model = await modelSchema.findById( req.params[ modelName ] ).exec();
-
+					const modelSchema = global.expressure.require( 'models', binder.modelName );
+					const model = await modelSchema.findById( req.data[ binder.fieldName ] ).exec();
+	
 					//Checking wether model was found
-					if( model === null ) {
-
+					if( model === null ){
+	
 						//Model was not found. Responding with error
-						return global.expressure.helpers.response.err(
-							res,
-							"MODEL_NOT_FOUND",
-							404,
-							null,
-							{
-								modelName: modelName
-							}
-						);	
-
+						return modelNotFound( res );
+	
 					} else {
-
-						//Model was found. Checking wether model bindings container was initialized
-						if( req.models === undefined ) req.models = {};
-
+	
 						//Binding model
-						req.models[ modelName ] = model ;
+						req.models[ binder.modelName ] = model ;
 						return next();
-
+	
 					}
 
-				});
+				} catch( err ) {
 
-			}
+					return modelNotFound( res );
+
+				}
+
+			});
 
 		}
 
@@ -302,21 +349,43 @@ class RouteBuilder {
 	}
 
 	/**
+	 * Resolves all implicit model binders specified in the uri of the route
+	 */
+	resolveImplicitModelBinders(){
+
+		//Looking for implicit model bindings in uri
+		for( const routeParam of this.fullUri.split('/') ){
+			if( routeParam.startsWith('::') ){
+			
+				//Adding implicit binding to binders array
+				const modelName = routeParam.substring(2);
+
+				this.bind(
+					modelName,
+					modelName
+				)
+
+			}
+		}
+
+	}
+
+	/**
 	 * Builds policy enforcers of request to Express request handlers
 	 */
-	buildPolicyEnforcers() {
+	buildPolicyEnforcers(){
 
 		const pipeline = new Array();
 
-		const policyEnforcer = require('../helpers/PolicyEnforcer');
+		const policyEnforcer = this.getPolicyEnforcerFunction();
 
 		//Adding policies to request handlers
-		for( const policy of this.policies ) {
+		for( const policy of this.policies ){
 
 			pipeline.push( (req, res, next) => {
 
 				//Enforcing policy
-				if( policyEnforcer( policy.policyName, policy.policyMethod, req ) ) {
+				if( policyEnforcer( policy.policyName, policy.policyMethod, req ) ){
 
 					//Policy check passed. Passing to next handler
 					return next();
@@ -342,8 +411,25 @@ class RouteBuilder {
 	/**
 	 * Returns the request handler
 	 */
-	getRequestHandler() {
-		return global.expressure.helpers.file('controllers', this.controllerName)[ this.controllerMethod ];
+	getRequestHandler(){
+		return global.expressure.require('controllers', this.controllerName)[ this.controllerMethod ];
+	}
+
+	/**
+	 * Returns the callback used to enforce policies
+	 */
+	getPolicyEnforcerFunction(){
+
+		return ( policyName, policyMethod, req ) => {
+
+			//Requiring policy
+			const policy = global.expressure.require( 'policies', policyName + 'Policy' );
+		
+			//Enforcing policy on request
+			return policy[policyMethod](req);
+			
+		}
+
 	}
 
 }

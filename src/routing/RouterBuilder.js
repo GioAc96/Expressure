@@ -8,10 +8,10 @@ class RouterBuilder {
 	/**
 	 * Instantiates a new RouteBuilder
 	 */
-	constructor() {
+	constructor(){
 		
 		//Checking wether Expressure config was set
-		if( global.expressureConfig == undefined ) {
+		if( global.expressureConfig == undefined ){
 			throw new Error("Expressure must be initialized before instantiating a new RouteBuilder");
 		}
 
@@ -30,6 +30,9 @@ class RouterBuilder {
 		//Initializing middlewares array
 		this.middlewares = new Array();
 
+		//Initializing binders array
+		this.binders = new Array();
+
 		//Initializing policies array
 		this.policies = new Array();
 
@@ -44,7 +47,7 @@ class RouterBuilder {
 	 * @param {Express Router} router Express Router to which the routes should be built on. If null, a new Express Router is instantiated
 	 * @param {String[]} parentRouterName Array of names of the parent routers
 	 */
-	buildRouter( router = null, parentRouterNames = [] ) {
+	buildRouter( router = null, parentRouterNames = [] ){
 
 		//Forcing pass by value of array
 		const parentRouterNamesCopy = parentRouterNames.slice(0);
@@ -56,8 +59,8 @@ class RouterBuilder {
 
 		}
 		
-		//Adding this' name to the router names array
-		if( this._name != '' ) {
+		//Passing name to the router names array
+		if( this._name != '' ){
 			parentRouterNamesCopy.push( this._name );
 		}
 
@@ -70,7 +73,7 @@ class RouterBuilder {
 		
 
 		//Recursively building route groups
-		for( const group of this.groups ) {
+		for( const group of this.groups ){
 
 			group.buildRouter( router, parentRouterNamesCopy );
 			
@@ -85,7 +88,7 @@ class RouterBuilder {
 	 * @param {String} uri Uri of the route
 	 * @param {String, Callable} action Controller method used to handle the request
 	 */
-	get( uri, action ) {
+	get( uri, action ){
 	
 		return this.route('GET', uri, action);
 
@@ -96,7 +99,7 @@ class RouterBuilder {
 	 * @param {String} uri Uri of the route
 	 * @param {String, Callable} action Controller method used to handle the request
 	 */
-	post( uri, action ) {
+	post( uri, action ){
 
 		return this.route('POST', uri, action);
 
@@ -108,29 +111,35 @@ class RouterBuilder {
 	 * @param {String} uri Uri of the route
 	 * @param {String, Callable} action Controller method used to handle the request
 	 */
-	route( method, uri, action ) {
+	route( method, uri, action ){
 
 		//Creating new route
-		const route = new Route({
-			method: method,
-			uri: uri,
-			action: action
-		});
+		const route = new Route( {method, uri, action} );
 
-		//Passing this' middlewares to route
-		for (const middleware of this.middlewares) {
+		//Passing middlewares to route
+		for( const middleware of this.middlewares ){
 			route.middleware(middleware);
 		}
 
-		//Passing this' validators to route
-		for( const validator of this.validators ) {
+		//Passing validators to route
+		for( const validator of this.validators ){
 			route.validate( validator );
 		}
 
-		//Passing this' prefix to route
+		//Passing binders to route
+		for( const binder of this.binders ){
+			route.bind( binder.fieldName,	binder.modelName );
+		}
+
+		//Passing policies to route
+		for( const policy of this.policies ){
+			route.policy( policy.policyName, policy.policyMethod );
+		}
+
+		//Passing prefix to route
 		route.prefix( this._prefix)
 
-		//Adding route to this' routes array
+		//Adding route to routes array
 		this.routes.push(route);
 
 		return route;
@@ -141,23 +150,20 @@ class RouterBuilder {
 	 * Adds a prefix to the URI of all routes in the RouterBuilder
 	 * @param {String} prefix prefix to add
 	 */
-	prefix( prefix ) {
+	prefix( prefix ){
 
 		this._prefix = prefix + this._prefix;
 
 		//Passing prefix to all routes
-		for( const routes of this.routes ) {
-		
+		for( const routes of this.routes ){
 			routes.prefix( prefix );
-		
 		}
 
 		//Passing prefix to all groups
-		for( const group of this.groups ) {
-
+		for( const group of this.groups ){
 			group.prefix( prefix );
-
 		}
+
 		//Returning this for method chaining
 		return this;
 
@@ -167,19 +173,19 @@ class RouterBuilder {
 	 * Adds a middelware to all routes
 	 * @param {String, Callable} middleware Name of the middleware or middleware callable
 	 */
-	middleware( middleware ) {
+	middleware( middleware ){
 
 		//Passing middleware to routes
-		for ( const route of this.routes ) {
+		for( const route of this.routes ){
 			route.middleware( middleware );
 		}
 
 		//Passing middleware to groups
-		for ( const group of this.groups ) {
+		for( const group of this.groups ){
 			group.middleware( middleware );
 		}
 
-		//Adding middleware to this' middlewares array
+		//Adding middleware to middlewares array
 		this.middlewares.push( middleware );
 
 		return this;
@@ -190,28 +196,35 @@ class RouterBuilder {
 	 * Creates a new subgroup of routes
 	 * @param {Callback} callback Helper callback that builds routes on the group
 	 */
-	group( callback ) {
+	group( callback ){
 
 		//Creating group
 		const group = new RouterBuilder();
 		callback( group );
 
-		//Adding this' middlewares to group
-		for (const middleware of this.middlewares) {
-			
+		//Passing middlewares to group
+		for(const middleware of this.middlewares){
+
 			group.middleware(middleware);
 
 		}
 
-		//Adding this' validators to group
-		for ( const validator of this.validators ) {
+		//Passing validators to group
+		for( const validator of this.validators ){
 
 			group.validate( validator );
 
 		}
 
-		//Adding this' policies to group
-		for ( const policy of this.policies ) {
+		//Passing binders to group
+		for( const binder of this.binders ){
+
+			group.bind( binder.fieldName, binder.modelName );
+
+		}
+
+		//Passing policies to group
+		for( const policy of this.policies ){
 
 			group.policy( policy.policyName, policy.policyMethod );
 
@@ -220,7 +233,7 @@ class RouterBuilder {
 		//Passing prefix to group
 		group.prefix( this._prefix );
 
-		//Adding group to this' groups array
+		//Adding group to groups array
 		this.groups.push(group);
 
 		return group;
@@ -231,19 +244,19 @@ class RouterBuilder {
 	 * Adds a validator to all routes
 	 * @param {Validator} validator Validator to add
 	 */
-	validate( validator ) {
+	validate( validator ){
 
 		//Passing validator to routes
-		for ( const route of this.routes ) {
+		for( const route of this.routes ){
 			route.validate( validator );
 		}
 
 		//Passing validator to groups
-		for ( const group of this.groups ) {
+		for( const group of this.groups ){
 			group.validate( validator );
 		}
 
-		//Adding valiadtor to this' validators array
+		//Adding valiadtor to validators array
 		this.validators.push( validator );
 
 		//Returning this for method chaining
@@ -256,19 +269,19 @@ class RouterBuilder {
 	 * @param {String} policyName Name of the policy
 	 * @param {String} policyMethod Name of the method of the policy
 	 */
-	policy( policyName, policyMethod ) {
+	policy( policyName, policyMethod ){
 
 		//Passing validator to routes
-		for ( const route of this.routes ) {
+		for( const route of this.routes ){
 			route.policy( policyName, policyMethod );
 		}
 
 		//Passing validator to groups
-		for ( const group of this.groups ) {
+		for( const group of this.groups ){
 			group.policy( policyName, policyMethod );
 		}
 
-		//Adding valiadtor to this' validators array
+		//Adding valiadtor to validators array
 		this.policies.push( { policyName, policyMethod } );
 
 		//Returning this for method chaining
@@ -280,8 +293,33 @@ class RouterBuilder {
 	 * Sets the name of the current router
 	 * @param {String} name Name of the router/route group
 	 */
-	name( name ) {
+	name( name ){
 		this._name = name;
+	}
+
+	/**
+	 * Manually adds a model binder to all the routes
+	 * @param {String} fieldName Name of the field containing the id of the model to bind
+	 * @param {String} modelName Name of the model schema to bind
+	 */
+	bind( fieldName, modelName ){
+
+		//Passing binder to routes
+		for( const route of this.routes ){
+			route.bind( fieldName, modelName );
+		}
+
+		//Passing binder to groups
+		for( const group of this.groups ){
+			group.bind( fieldName, modelName );
+		}
+
+		//Adding binder to binders array
+		this.binders.push( { fieldName, modelName } );
+
+		//Returning this for method chaining
+		return this;
+
 	}
 
 }

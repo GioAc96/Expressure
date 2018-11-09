@@ -34,7 +34,7 @@ module.exports = {
 		res,
 		errorCode = 0,
 		status = 520,
-		msg = undefined,
+		msg,
 		data
 	) {
 
@@ -43,7 +43,7 @@ module.exports = {
 
 		//Looking for error code in errors
 		if( typeof errorCode === 'string' || errorCode instanceof String ) {
-			
+		
 			errorCode = global.expressureConfig.errors[ errorCode ] || 0;
 			
 		}
@@ -51,7 +51,7 @@ module.exports = {
 		//Sending response
 		res.send({
 			ok: false,
-			errorCode: errorCode,
+			errorCode: errorCode || 0,
 			msg: msg,
 			data: data
 		});
@@ -76,7 +76,7 @@ module.exports = {
 			res,
 			errorCode,
 			400,
-			null,
+			undefined,
 			errors
 		)
 
@@ -100,7 +100,7 @@ module.exports = {
 			res,
 			errorCode,
 			403,
-			null,
+			undefined,
 			{
 				policyName: policyName,
 				policyMethod: policyMethod

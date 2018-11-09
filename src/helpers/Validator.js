@@ -235,6 +235,17 @@ class Validator {
 
 				return value.length >= params.min && value.length <= params.max
 
+			},
+
+			//Field value represents a model that should exist in the database
+			exists: async ( value, params ) => {
+				
+				//Counting models
+				const modelCount = await params.model.countDocuments({ _id: value });
+
+				return modelCount > 0;
+				
+
 			}
 	
 	
